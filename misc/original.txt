@@ -1,0 +1,86 @@
+**Problem Statement**
+You are given `n` points on a line — the x-coordinates of the cities — and `m` points on the same line — the x-coordinates of the cellular towers.
+
+All towers work identically: a tower covers every city whose distance to the tower is **at most** `r`.  
+(If `r = 0`, a tower covers only the point where it is located.) A single tower may cover any number of cities.
+
+Find the minimum value of `r` such that **every** city is covered by **at least one** tower.
+
+**Input Format**
+- The first line contains two integers `n` and `m` (`1 ≤ n, m ≤ 100000`) — the number of cities and the number of towers.
+- The second line contains `n` integers `a1, a2, ..., an` (`-10^9 ≤ ai ≤ 10^9`) — city coordinates, given in non-decreasing order. Multiple cities may share the same coordinate.
+- The third line contains `m` integers `b1, b2, ..., bm` (`-10^9 ≤ bj ≤ 10^9`) — tower coordinates, given in non-decreasing order. Multiple towers may share the same coordinate.
+
+**Output Format**
+Print the minimum integer `r` such that every city is covered by the cellular network.
+
+**Examples**
+Sample Input 1
+```
+3 2
+-2 2 4
+-3 0
+```
+Sample Output 1
+```
+4
+```
+
+Sample Input 2
+```
+5 3
+1 5 10 14 17
+4 11 15
+```
+Sample Output 2
+```
+3
+```
+
+**Editorial**
+For each city, we need the distance to its **nearest** tower. If for a city this nearest distance is `d`, then any valid radius must satisfy `r ≥ d`. Therefore, the minimal possible `r` is the maximum over all cities of their nearest-tower distances.
+
+Because tower coordinates are sorted, for a city at position `cur` we can:
+1. Find the first tower position `>= cur` using `lower_bound`. This gives the nearest tower on the **right** (if it exists).
+2. The tower just before it (index `-1`) is the nearest tower on the **left** (if it exists).
+3. The nearest distance for the city is the minimum of these two distances.
+
+To avoid boundary checks, add two sentinel towers at very small and very large coordinates. Then for every city, both neighbors exist.
+
+Overall complexity: `O(n log m)` using binary search for each city.  
+(There is also a linear two-pointers solution, but binary search is sufficient here.)
+
+**Code**
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int N, M;
+    cin >> N >> M;
+
+    vector<long long> A(N);
+    for (int i = 0; i < N; i++) cin >> A[i];
+
+    const long long INF = (1LL << 40);
+
+    vector<long long> B(M + 2);
+    B[0] = -INF;
+    for (int i = 0; i < M; i++) cin >> B[i + 1];
+    B[M + 1] = INF;
+
+    long long ans = 0;
+    for (int i = 0; i < N; i++) {
+        int x = int(lower_bound(B.begin(), B.end(), A[i]) - B.begin());
+        long long distRight = B[x] - A[i];
+        long long distLeft  = A[i] - B[x - 1];
+        ans = max(ans, min(distLeft, distRight));
+    }
+
+    cout << ans << "\n";
+    return 0;
+}
+```

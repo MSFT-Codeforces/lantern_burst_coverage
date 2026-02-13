@@ -1,0 +1,54 @@
+At first store coordinates of all towers in set _towers_.
+
+Then let's look through all cities. Let the current city be located in the point _cur_. Let _it_ = _towers_. _lower_ _bound_( _cur_). Then if _it_ is not equal to the end of the set we put in the variable _dist_ the value ( \* _it_ - _cur_) — the distance to the nearest tower on the right for the current city. If _it_ is not equal to the beginning of the set we need to make _it_ –  and update _dist_ = _min_( _dist_, _cur_ -  \* _it_) — the distance to the nearest tower on the left to the current city. After that we only need to update the answer: _ans_ = _max_( _ans_, _dist_).
+
+Also this problem can be solved with help of two pointers in linear time.
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+typedef signed long long ll;
+
+#undef _P
+#define _P(...) (void)printf(__VA_ARGS__)
+#define FOR(x,to) for(x=0;x<(to);x++)
+#define FORR(x,arr) for(auto& x:arr)
+#define ITR(x,c) for(__typeof(c.begin()) x=c.begin();x!=c.end();x++)
+#define ALL(a) (a.begin()),(a.end())
+#define ZERO(a) memset(a,0,sizeof(a))
+#define MINUS(a) memset(a,0xff,sizeof(a))
+//-------------------------------------------------------
+
+int N,M;
+ll A[101010];
+ll B[101010];
+
+void solve() {
+	int i,j,k,l,r,x,y; string s;
+	
+	cin>>N>>M;
+	FOR(i,N) cin>>A[i];
+	B[0]=-1LL<<40;
+	FOR(i,M) cin>>B[i+1];
+	B[M+1]=1LL<<40;
+	M+=2;
+	
+	ll mi=0;
+	FOR(i,N) {
+		x = lower_bound(B,B+M,A[i])-B;
+		mi=max(mi,min(A[i]-B[x-1],B[x]-A[i]));
+	} 
+	cout<<mi<<endl;
+	
+}
+
+
+int main(int argc,char** argv){
+	string s;int i;
+	if(argc==1) ios::sync_with_stdio(false), cin.tie(0);
+	FOR(i,argc-1) s+=argv[i+1],s+='\n';
+	FOR(i,s.size()) ungetc(s[s.size()-1-i],stdin);
+	solve(); return 0;
+}
+
+```

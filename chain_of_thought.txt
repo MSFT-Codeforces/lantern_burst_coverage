@@ -1,0 +1,185 @@
+**[section_01]**
+Interpreting the objects, actions, and objective
+**[atomic_01_01]**
+We are given two sorted (non-decreasing) integer coordinate lists on a line: $n$ outposts at $a_1, a_2, \dots, a_n$ and $m$ lantern posts at $b_1, b_2, \dots, b_m$. Because the order is non-decreasing (not strictly increasing), multiple outposts or lanterns may share the same coordinate, and they should still be treated as separate items.
+**[atomic_01_02]**
+We must choose a single integer radius $s \ge 0$. Any lantern that is activated will illuminate using this same radius, covering the closed coordinate interval $[x-s, x+s]$ where $x$ is the lantern’s coordinate. An outpost is considered illuminated if it lies within the illuminated interval of at least one activated lantern.
+**[atomic_01_03]**
+Lantern activations are constrained: we cannot freely pick arbitrary individual lanterns. Instead, we activate lanterns in “bursts”, where each burst chooses a contiguous block of lantern indices $[l..r]$ (1-based indices in the given sorted lantern list) and activates every lantern with index $l, l+1, \dots, r$.
+**[atomic_01_04]**
+There are two separate limits on the activation plan. First, we may perform at most $t$ bursts. Second, there is an “effort” budget $k$, where each burst contributes its length $r-l+1$ to the total effort:
+$$
+\text{effort} = \sum_{\text{bursts}} (r-l+1).
+$$
+The plan is valid only if this total effort is at most $k$.
+**[atomic_01_05]**
+Bursts are allowed to overlap in terms of indices, but overlap provides no discount: if an index appears in two bursts, it is counted twice in the effort because effort is the sum of burst lengths, not the number of distinct activated lanterns.
+**[atomic_01_06]**
+The goal is to output the minimum integer radius $s$ such that there exists at least one activation plan satisfying both limits (at most $t$ bursts and total effort at most $k$) that illuminates all $n$ outposts.
+
+---
+
+**[section_02]**
+Designing edge cases and validation inputs (without solving)
+**[atomic_02_01]**
+Smallest sizes: $n=1$ and/or $m=1$. These cases ensure the implementation handles single-element arrays and does not assume multiple lanterns or outposts exist. They also help validate behavior when only one burst or one lantern is even possible.
+**[atomic_02_02]**
+Budget lower bound: $k=1$. This forces the total effort to be at most 1, meaning that across all bursts the sum of block lengths cannot exceed 1, which is a very restrictive regime and can expose mistakes where effort is accidentally treated as “unique activated lanterns.”
+**[atomic_02_03]**
+Budget upper regime: $k=m$. This allows activating an entire lantern array in one burst with effort $m$, or activating multiple bursts whose total lengths sum to $m$. It is useful to confirm that the effort constraint is applied globally and not per burst.
+**[atomic_02_04]**
+Burst-count extremes: $t=1$ (must be a single contiguous block) versus $t=30$ (many bursts allowed). These cases highlight the difference between being constrained by contiguity in one block and being allowed multiple blocks while still paying total effort.
+**[atomic_02_05]**
+Duplicate coordinates: examples where $a_i=a_{i+1}$ and/or $b_j=b_{j+1}$. This checks that coordinate equality does not break comparisons, and that all items are still counted, especially when multiple outposts share the same feasible lantern positions.
+**[atomic_02_06]**
+Negative and extreme values: coordinates near $-10^9$ and $10^9$, and mixes like outposts negative while lanterns positive. Such tests validate that arithmetic on $a_i \pm s$ and comparisons remain correct under large magnitudes.
+**[atomic_02_07]**
+Uncoverable-at-small-radius scenarios: include at least one outpost far from every lantern so that for small $s$ it cannot be illuminated. This ensures the system correctly identifies radii where illumination is impossible due to geometry alone, independent of $k$ and $t$.
+**[atomic_02_08]**
+Overlap-sensitive effort scenarios: craft cases where the most “intuitive” plan might reuse the same lantern indices in multiple bursts. These inputs ensure that overlapping bursts are charged multiple times exactly as stated, preventing accidental “union-of-indices” interpretations.
+
+---
+
+**[section_03]**
+Implementing brute force over radii and burst selections
+**[atomic_03_01]**
+A first naive approach is to iterate integer radii $s$ from $0$ upward until we find one that allows illuminating all outposts. For each $s$, we would attempt to decide whether there exists a set of at most $t$ bursts (contiguous index blocks) whose activation illuminates all outposts while keeping total effort at most $k$.
+**[atomic_03_02]**
+For a fixed radius $s$, a burst plan is defined by choosing up to $t$ index intervals $[l..r]$ in an array of length $m$. The number of possible intervals is $\frac{m(m+1)}{2}$, and even choosing a small number of them rapidly becomes intractable.
+**[atomic_03_03]**
+Even if we ignore ordering and allow overlaps, a rough upper bound for enumerating up to $t$ intervals is on the order of $O(m^{2t})$ possibilities (each interval can be described by two endpoints). This already makes $m=10^5$ unusable even for $t=2$.
+**[atomic_03_04]**
+After picking a burst plan, verifying coverage can be done by checking whether each outpost has at least one activated lantern within distance $s$. But regardless of whether this verification is $O(nm)$, $O(n+m)$, or anything else, it is dominated by the enumeration of burst plans.
+**[atomic_03_05]**
+Scanning all possible radii is also impossible: coordinates can differ by up to $2 \cdot 10^9$, so the answer can be that large. A linear scan over $s \in [0, 2\cdot 10^9]$ adds a multiplicative factor of $O(C)$ with $C \approx 2 \cdot 10^9$.
+**[atomic_03_06]**
+This attempt fails due to two independent explosions: the radius domain and the burst-plan search space. A reasonable way to express the time is:
+$$
+O\left(C \cdot m^{2t} \cdot \text{check}(n,m)\right),
+$$
+which is infeasible for the given constraints. Memory usage is not the main issue here; the search space size is.
+
+---
+
+**[section_04]**
+Replacing linear radius scan with binary search while keeping a naive feasibility check
+**[atomic_04_01]**
+A clear improvement over scanning all radii is to binary search the minimum feasible $s$. This relies on a monotonicity property: if a radius $s$ is feasible, then any larger radius $s' > s$ is also feasible because each activated lantern illuminates a superset of outposts.
+**[atomic_04_02]**
+With coordinates bounded within $[-10^9, 10^9]$, we can safely search within a range such as $[-1, 2 \cdot 10^9]$ (interpreting $-1$ as “definitely infeasible”). The number of feasibility checks becomes $O(\log C)$ where $C \approx 2 \cdot 10^9$.
+**[atomic_04_03]**
+However, if the feasibility test for a fixed $s$ still tries to enumerate burst blocks (or otherwise explores the combinatorial space of up to $t$ intervals), then binary search does not resolve the core bottleneck. It only reduces the number of times we repeat the infeasible search.
+**[atomic_04_04]**
+In this approach, the time complexity becomes roughly:
+$$
+O\left(\log C \cdot m^{2t} \cdot \text{check}(n,m)\right),
+$$
+which is strictly better than Section 3 by a factor of about $\frac{C}{\log C}$, but is still completely impractical for $m=10^5$ and $t$ up to $30$.
+**[atomic_04_05]**
+This reveals an important constraint-driven insight: the feasibility check must be polynomial and close to linear in $n$ and $m$. Otherwise, even a small number of feasibility checks will time out.
+**[atomic_04_06]**
+So the second attempt fails because it improves the outer search but not the inner decision problem. The next refinement must restructure the feasibility check to exploit the sorted order and the “contiguous by index” nature of bursts.
+
+---
+
+**[section_05]**
+Modeling illumination as index intervals and using a quadratic DP per feasibility check
+**[atomic_05_01]**
+To avoid enumerating bursts directly, we can model, for a fixed radius $s$, which lantern indices are capable of illuminating each outpost. For outpost $i$, the lanterns that can illuminate it are those with coordinates in $[a_i-s, a_i+s]$.
+**[atomic_05_02]**
+Because the lantern coordinates $b$ are sorted, for each outpost we can define a contiguous index interval $[L_i, R_i]$ (in lantern index space) such that lantern index $j$ can illuminate outpost $i$ iff $j \in [L_i, R_i]$. If for some $i$ we get $L_i > R_i$, then radius $s$ is immediately infeasible because outpost $i$ has no lantern within distance $s$.
+**[atomic_05_03]**
+The intervals $[L_i, R_i]$ can be constructed efficiently per radius by scanning the two sorted arrays with two pointers, ensuring that we do not compare every pair $(a_i, b_j)$. This makes interval construction feasible at scale and prevents an $O(nm)$ blow-up.
+**[atomic_05_04]**
+A burst activates a contiguous lantern index segment $[u..v]$. That burst illuminates outpost $i$ exactly when the two index intervals intersect:
+$$
+[u..v] \cap [L_i..R_i] \ne \emptyset.
+$$
+Because $L_i$ and $R_i$ are non-decreasing in $i$ (from the sorted structure), the set of outposts illuminated by a fixed $[u..v]$ forms a contiguous block of outpost indices. This supports a “cover outposts left-to-right” perspective.
+**[atomic_05_05]**
+If we decide that a single burst will be responsible for covering a contiguous outpost segment $[p..i]$, we can compute the minimum effort (minimum length $v-u+1$) required for one lantern segment to intersect every interval $[L_j..R_j]$ for $j \in [p..i]$. By monotonicity over $j$, the tight constraints become:
+- we need $u \le \min_{j \in [p..i]} R_j = R_p$,
+- we need $v \ge \max_{j \in [p..i]} L_j = L_i$.
+This yields the minimal segment length:
+$$
+\text{cost}(p,i) = \max(1, L_i - R_p + 1).
+$$
+**[atomic_05_06]**
+Using this segment cost, we can build a DP for a fixed $s$: cover the first $i$ outposts using some number of bursts, with total effort minimized, and finally check whether the minimum effort for covering all $n$ outposts using at most $t$ bursts is at most $k$.
+**[atomic_05_07]**
+A straightforward transition for each burst layer is:
+$$
+dp[i] = \min_{1 \le p \le i} \left(prev[p-1] + \text{cost}(p,i)\right),
+$$
+where $prev$ represents results from the previous burst count. This transition scans all $p$ for each $i$, which is quadratic per layer.
+**[atomic_05_08]**
+This approach is a major improvement over combinatorial enumeration, but it still fails performance constraints. Per radius check, the time becomes:
+$$
+O(n+m) + O(tn^2),
+$$
+and with binary search the total is $O(\log C \cdot (n+m+tn^2))$. For $n=10^5$, the $tn^2$ term is far too large.
+
+---
+
+**[section_06]**
+Optimizing the DP transition with monotone structures to achieve linear time per burst layer
+**[atomic_06_01]**
+The quadratic bottleneck in Section 5 is the inner minimization over $p$. To optimize it, we examine the structure of:
+$$
+prev[p-1] + \max(1, L_i - R_p + 1),
+$$
+and use the fact that $L_i$ is non-decreasing in $i$ and $R_p$ is non-decreasing in $p$.
+**[atomic_06_02]**
+We split candidate starts $p$ into two categories for a fixed $i$:
+- Good: $R_p \ge L_i$, then the added cost is $\max(1, \cdot) = 1$.
+- Bad: $R_p < L_i$, then the added cost is $L_i - R_p + 1$.
+This split is useful because as $i$ increases (and $L_i$ increases), the boundary between bad and good moves monotonically forward in $p$.
+**[atomic_06_03]**
+For good candidates, the transition becomes:
+$$
+\min_{p \text{ good}} (prev[p-1] + 1) = 1 + \min_{p \text{ good}} prev[p-1].
+$$
+So we only need to query the minimum of $prev[p-1]$ over a moving valid range of indices. A deque can maintain a sliding minimum of $prev[\cdot]$ as we progress in $i$.
+**[atomic_06_04]**
+For bad candidates, we rewrite:
+$$
+prev[p-1] + (L_i - R_p + 1) = (prev[p-1] - R_p) + (L_i + 1).
+$$
+For fixed $i$, $(L_i+1)$ is constant, so we only need:
+$$
+\min_{p \text{ bad}} (prev[p-1] - R_p).
+$$
+Since the bad set expands monotonically with $i$, we can maintain this minimum incrementally with a pointer and a running best value.
+**[atomic_06_05]**
+Operationally, for each $i$ we maintain a pointer $ptr$ such that $R_{ptr} < L_i$ and $R_{ptr+1} \ge L_i$ (or $ptr=i$ if all up to $i$ are bad). This pointer never moves backward as $i$ increases, enabling an amortized $O(1)$ update per $i$.
+**[atomic_06_06]**
+At each $i$ we compute the best of two values: the best good candidate (deque front) plus $1$, and the best bad candidate (running minimum) plus $(L_i+1)$. This replaces the entire $\min_{p}$ scan with constant-time queries after maintaining the data structures.
+**[atomic_06_07]**
+We must also respect “at most $t$ bursts” rather than “exactly $t$ bursts”. This means after computing the best effort achievable with the current burst layer, we take the minimum with the previous “at most” value so that using fewer bursts remains allowed.
+**[atomic_06_08]**
+This refinement strictly improves the DP layer cost from $O(n^2)$ to $O(n)$, making the feasibility check:
+$$
+O(n+m+tn)
+$$
+time and $O(n)$ memory per radius. With binary search, the total time becomes $O(\log C \cdot (n+m+tn))$, which fits the constraints.
+
+---
+
+**[section_07]**
+Verifying invariants, corner conditions, and numeric safety in the final method
+**[atomic_07_01]**
+Binary search correctness depends on having a guaranteed infeasible lower bound and feasible upper bound. Using $lo=-1$ as infeasible is safe because radii are constrained to $s \ge 0$. Using $hi=2 \cdot 10^9$ is safe under the coordinate bounds because any outpost-lantern distance is at most $2 \cdot 10^9$.
+**[atomic_07_02]**
+All computations involving $a_i \pm s$ should be treated as 64-bit integer arithmetic. Even though inputs are within 32-bit range, intermediate values and comparisons must not overflow when $s$ is large.
+**[atomic_07_03]**
+Interval construction must be consistent about inclusivity: lanterns satisfy $b_j \ge a_i - s$ for the left endpoint and $b_j \le a_i + s$ for the right endpoint. Off-by-one errors here can incorrectly mark a feasible radius as infeasible, especially when lantern coordinates are exactly on the boundary.
+**[atomic_07_04]**
+The feasibility short-circuit $L_i > R_i$ is essential. Without it, later DP logic might attempt to cover an outpost that cannot be illuminated by any activated lantern, producing misleading finite answers due to numeric artifacts.
+**[atomic_07_05]**
+The effort model requires enforcing the minimum burst length of $1$. Even if outposts’ feasible lantern intervals overlap, a burst must activate at least one lantern index, so the segment cost must be $\max(1, L_i - R_p + 1)$ and not just $L_i - R_p + 1$.
+**[atomic_07_06]**
+Deque and pointer invariants must match the split between good and bad candidates. When the boundary moves, indices that no longer belong to the good range must be removed from the deque front; otherwise the algorithm would accidentally use an invalid start and undercount effort.
+**[atomic_07_07]**
+Feasibility at the end must compare the computed minimum total effort against $k$ (not against $m$ or against a union size). This is where overlap behavior is enforced implicitly: because we optimize the sum of burst lengths, overlapping bursts are never “free” and are naturally penalized.
+**[atomic_07_08]**
+A practical validation set should include: duplicates in $a$ and $b$, $t=1$ with small $k$, cases where the answer is $0$ (outposts coinciding with lanterns and $k \ge 1$), and cases where feasibility flips sharply at a particular $s$. These inputs are targeted at catching off-by-one mistakes and boundary misclassification in the good/bad split.

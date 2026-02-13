@@ -1,0 +1,294 @@
+**1. Problem Understanding**
+
+We are given $n$ outposts at sorted integer coordinates and $m$ lanterns at sorted integer coordinates. If we choose an integer radius $s \ge 0$, then every activated lantern illuminates outposts within distance $s$ (i.e., within $[x-s, x+s]$ for lantern coordinate $x$).
+
+Lanterns can only be activated using bursts:
+
+- At most $t$ bursts.
+- Each burst activates a contiguous block of lantern indices $[l..r]$ (1-based in the given lantern list).
+- Total effort is the sum of lengths of all bursts, $\sum (r-l+1)$, and must be $\le k$.
+- Bursts may overlap, but overlap still costs again.
+
+We must output the minimum integer radius $s$ such that all outposts can be illuminated under these constraints.
+
+---
+
+**2. Optimal Approach**
+
+1. **Binary search on the radius $s$.**  
+   Feasibility is monotone: if radius $s$ is sufficient, any larger radius is also sufficient. We binary search the minimum feasible $s$ in the range $[-1, 2 \cdot 10^9]$.
+
+2. **For a fixed radius, compute per-outpost feasible lantern index intervals.**  
+   For each outpost (1-based index `outpostIndex`), compute:
+   - `leftIndex[outpostIndex]`: the first lantern index whose coordinate is $\ge a - s$
+   - `rightIndex[outpostIndex]`: the last lantern index whose coordinate is $\le a + s$
+
+   If `leftIndex[outpostIndex] > rightIndex[outpostIndex]` for any outpost, then this radius cannot illuminate that outpost at all, so the radius is infeasible.
+
+3. **Dynamic programming to minimize total effort with at most `maxBurstCount` bursts.**  
+   If one burst is used to cover a consecutive segment of outposts from `startOutpost` to `endOutpost`, the minimum possible burst length (effort) needed is:
+   $$
+   \text{cost}(startOutpost, endOutpost) = \max(1,\ leftIndex[endOutpost] - rightIndex[startOutpost] + 1).
+   $$
+   We compute the minimum effort to cover the first $i$ outposts using at most a certain number of bursts, and finally check whether the minimum effort to cover all outposts is $\le k$.
+
+   The naive transition is quadratic, but it can be optimized to $O(n)$ per burst by splitting candidates into:
+   - “good starts” where `rightIndex[startOutpost] >= leftIndex[endOutpost]` (added cost is 1),
+   - “bad starts” otherwise (added cost becomes `leftIndex[endOutpost] - rightIndex[startOutpost] + 1`),
+   and maintaining the needed minima with a deque and a running minimum.
+
+---
+
+**3. Code**
+```cpp
+#include <algorithm>
+#include <deque>
+#include <iostream>
+#include <vector>
+
+namespace {
+const long long kInfinity = (1LL << 60);
+
+/**
+ * @brief Computes coverage index intervals [leftIndex, rightIndex] for each outpost.
+ *
+ * For a given radius, an outpost can be illuminated by lanterns whose coordinates lie within
+ * [outpost - radius, outpost + radius]. Because lanternCoordinates is sorted, this set is a
+ * contiguous interval in lantern index space.
+ *
+ * Indices are produced in 1-based lantern index space, and outposts are treated as 1-based
+ * in leftIndex/rightIndex to match the DP.
+ *
+ * @param radius The candidate illumination radius.
+ * @param outpostCoordinates Sorted outpost coordinates.
+ * @param lanternCoordinates Sorted lantern coordinates.
+ * @param leftIndex Output vector (size outpostCount + 1), 1-based outpost indexing.
+ * @param rightIndex Output vector (size outpostCount + 1), 1-based outpost indexing.
+ * @return True if every outpost has a non-empty interval, false otherwise.
+ */
+bool computeCoverageIntervals(long long radius,
+                              const std::vector<long long>& outpostCoordinates,
+                              const std::vector<long long>& lanternCoordinates,
+                              std::vector<int>& leftIndex,
+                              std::vector<int>& rightIndex) {
+    const int outpostCount = static_cast<int>(outpostCoordinates.size());
+    const int lanternCount = static_cast<int>(lanternCoordinates.size());
+
+    int leftLanternPointer = 0;   // First lantern with coordinate >= outpost - radius.
+    int rightLanternPointer = 0;  // First lantern with coordinate > outpost + radius.
+
+    for (int outpostIndex = 1; outpostIndex <= outpostCount; outpostIndex++) {
+        const long long outpostCoordinate = outpostCoordinates[outpostIndex - 1];
+        const long long leftCoordinate = outpostCoordinate - radius;
+        const long long rightCoordinate = outpostCoordinate + radius;
+
+        while (leftLanternPointer < lanternCount &&
+               lanternCoordinates[leftLanternPointer] < leftCoordinate) {
+            leftLanternPointer++;
+        }
+
+        if (rightLanternPointer < leftLanternPointer) {
+            rightLanternPointer = leftLanternPointer;
+        }
+        while (rightLanternPointer < lanternCount &&
+               lanternCoordinates[rightLanternPointer] <= rightCoordinate) {
+            rightLanternPointer++;
+        }
+
+        leftIndex[outpostIndex] = leftLanternPointer + 1;  // Convert to 1-based lantern index.
+        rightIndex[outpostIndex] = rightLanternPointer;    // Count of lanterns <= rightCoordinate.
+
+        if (leftIndex[outpostIndex] > rightIndex[outpostIndex]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * @brief Checks if a given radius can illuminate all outposts within burst and effort limits.
+ *
+ * Steps:
+ * 1) Compute leftIndex/outpostIndex and rightIndex/outpostIndex for the candidate radius.
+ * 2) Run DP over up to maxBurstCount bursts to minimize total effort.
+ * 3) Return whether the minimal effort to cover all outposts is <= maxEffort.
+ *
+ * @param radius Candidate radius to test.
+ * @param outpostCoordinates Sorted outpost coordinates.
+ * @param lanternCoordinates Sorted lantern coordinates.
+ * @param maxEffort Maximum allowed total effort (sum of burst lengths).
+ * @param maxBurstCount Maximum allowed number of bursts.
+ * @return True if feasible, false otherwise.
+ */
+bool isFeasibleRadius(long long radius,
+                      const std::vector<long long>& outpostCoordinates,
+                      const std::vector<long long>& lanternCoordinates,
+                      int maxEffort,
+                      int maxBurstCount) {
+    const int outpostCount = static_cast<int>(outpostCoordinates.size());
+
+    std::vector<int> leftIndex(outpostCount + 1, 0);
+    std::vector<int> rightIndex(outpostCount + 1, 0);
+
+    if (!computeCoverageIntervals(radius, outpostCoordinates, lanternCoordinates, leftIndex, rightIndex)) {
+        return false;
+    }
+
+    std::vector<long long> bestEffortAtMostBursts(outpostCount + 1, kInfinity);
+    bestEffortAtMostBursts[0] = 0;
+
+    for (int burstNumber = 1; burstNumber <= maxBurstCount; burstNumber++) {
+        const std::vector<long long> previousBestEffort = bestEffortAtMostBursts;
+        std::vector<long long> bestEffortWithExactlyThisBurstCount(outpostCount + 1, kInfinity);
+        bestEffortWithExactlyThisBurstCount[0] = 0;
+
+        int boundaryPointer = 0;
+        int processedBadStarts = 0;
+        long long bestBadValue = kInfinity;
+
+        std::deque<int> goodDeque;
+
+        for (int endOutpost = 1; endOutpost <= outpostCount; endOutpost++) {
+            const int previousCoveredOutposts = endOutpost - 1;
+            if (previousBestEffort[previousCoveredOutposts] < kInfinity) {
+                while (!goodDeque.empty() &&
+                       previousBestEffort[goodDeque.back()] >= previousBestEffort[previousCoveredOutposts]) {
+                    goodDeque.pop_back();
+                }
+                goodDeque.push_back(previousCoveredOutposts);
+            }
+
+            while (boundaryPointer < outpostCount &&
+                   rightIndex[boundaryPointer + 1] < leftIndex[endOutpost]) {
+                boundaryPointer++;
+            }
+
+            const int badStartCount = std::min(boundaryPointer, endOutpost);
+
+            while (processedBadStarts < badStartCount) {
+                processedBadStarts++;
+                const int startOutpost = processedBadStarts;
+                const int previousIndex = startOutpost - 1;
+                if (previousBestEffort[previousIndex] < kInfinity) {
+                    bestBadValue = std::min(
+                        bestBadValue,
+                        previousBestEffort[previousIndex] - static_cast<long long>(rightIndex[startOutpost])
+                    );
+                }
+            }
+
+            while (!goodDeque.empty() && goodDeque.front() < badStartCount) {
+                goodDeque.pop_front();
+            }
+
+            long long bestValueForCurrent = kInfinity;
+
+            if (!goodDeque.empty()) {
+                bestValueForCurrent = std::min(bestValueForCurrent, previousBestEffort[goodDeque.front()] + 1);
+            }
+
+            if (bestBadValue < kInfinity) {
+                bestValueForCurrent = std::min(
+                    bestValueForCurrent,
+                    bestBadValue + static_cast<long long>(leftIndex[endOutpost]) + 1
+                );
+            }
+
+            bestEffortWithExactlyThisBurstCount[endOutpost] = bestValueForCurrent;
+        }
+
+        for (int coveredOutposts = 0; coveredOutposts <= outpostCount; coveredOutposts++) {
+            bestEffortAtMostBursts[coveredOutposts] = std::min(
+                bestEffortAtMostBursts[coveredOutposts],
+                bestEffortWithExactlyThisBurstCount[coveredOutposts]
+            );
+        }
+    }
+
+    return bestEffortAtMostBursts[outpostCount] <= static_cast<long long>(maxEffort);
+}
+}  // namespace
+
+/**
+ * @brief Reads input, binary searches the minimum feasible radius, and prints it.
+ *
+ * @return Exit code 0 on success.
+ */
+int main() {
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
+    int outpostCount = 0;
+    int lanternCount = 0;
+    int maxEffort = 0;
+    int maxBurstCount = 0;
+
+    std::cin >> outpostCount >> lanternCount >> maxEffort >> maxBurstCount;
+
+    std::vector<long long> outpostCoordinates(outpostCount);
+    std::vector<long long> lanternCoordinates(lanternCount);
+
+    for (int outpostIndex = 0; outpostIndex < outpostCount; outpostIndex++) {
+        std::cin >> outpostCoordinates[outpostIndex];
+    }
+    for (int lanternIndex = 0; lanternIndex < lanternCount; lanternIndex++) {
+        std::cin >> lanternCoordinates[lanternIndex];
+    }
+
+    long long lowRadius = -1;
+    long long highRadius = 2000000000LL;
+
+    while (highRadius - lowRadius > 1) {
+        const long long midRadius = lowRadius + (highRadius - lowRadius) / 2;
+        if (isFeasibleRadius(midRadius, outpostCoordinates, lanternCoordinates, maxEffort, maxBurstCount)) {
+            highRadius = midRadius;
+        } else {
+            lowRadius = midRadius;
+        }
+    }
+
+    std::cout << highRadius << "\n";
+    return 0;
+}
+```
+
+**4. Code Explanation**
+
+- `main` reads input, then binary searches the smallest radius between `lowRadius = -1` (infeasible) and `highRadius = 2000000000` (feasible).
+- `isFeasibleRadius` checks a candidate radius:
+  1. Calls `computeCoverageIntervals` to build `leftIndex[outpostIndex]` and `rightIndex[outpostIndex]` for each outpost (1-based outpost indexing in these arrays). If any interval is empty (`leftIndex > rightIndex`), the radius is immediately rejected.
+  2. Runs a DP that minimizes total effort to cover the first `endOutpost` outposts with at most `maxBurstCount` bursts.
+     - Covering outposts `startOutpost..endOutpost` with one burst costs $\max(1,\ leftIndex[endOutpost] - rightIndex[startOutpost] + 1)$.
+     - The DP transition is optimized by maintaining:
+       - a deque of candidate “good” starts where `rightIndex[startOutpost] >= leftIndex[endOutpost]` (added cost is always 1),
+       - a running minimum for “bad” starts where `rightIndex[startOutpost] < leftIndex[endOutpost]` (added cost depends on the gap).
+  3. Returns true if the minimum total effort to cover all outposts is `<= maxEffort`.
+
+---
+
+**5. Time and Space Complexity**
+
+Let $C = 2 \cdot 10^9$.
+
+- Each feasibility check for a radius:
+  - Interval computation: $O(n+m)$
+  - DP across at most $t$ bursts: $O(tn)$
+  - Total: $O(n+m+tn)$
+- Binary search uses $O(\log C)$ feasibility checks.
+
+Overall time complexity:
+$$
+O(\log C \cdot (n+m+tn)).
+$$
+
+Space complexity:
+$$
+O(n+m)
+$$
+to store input arrays plus $O(n)$ for DP and interval arrays.
+
+---
+
+**6. Conclusion**
+
+By binary searching the radius and using an $O(n+m+tn)$ feasibility test based on lantern-index intervals and an optimized DP, we can compute the minimum integer radius that allows illuminating all outposts within the burst count and total effort constraints.

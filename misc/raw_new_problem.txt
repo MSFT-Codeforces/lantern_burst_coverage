@@ -1,0 +1,259 @@
+## Problem — The Linked Obelisks of the Dust Road (Hard)
+
+Along the Dust Road there are:
+
+- `n` settlements at integer positions `p1, p2, …, pn` (sorted non-decreasing)
+- `m` obelisks at integer positions `q1, q2, …, qm` (sorted non-decreasing)
+
+All awakened obelisks use the **same integer aura strength** `s ≥ 0`.
+
+An obelisk at position `x` protects every settlement within distance `s`, i.e. all settlements in `[x−s, x+s]`.
+
+Because of ancient wiring, awakening must be done in **activation waves**:
+
+- You may perform **at most `t` waves**.
+- In one wave, you choose a **contiguous block** of obelisks by index `[l..r]` (1-based), and awaken **all** obelisks `ql, q(l+1), …, qr`.
+- The **activation cost** of a plan is the **sum of block lengths** over all waves:
+  \[
+  \sum (r - l + 1)
+  \]
+  This value must be **≤ `k`**.
+  (Blocks are allowed to overlap; if they do, overlapped indices are still counted again because the cost is defined as the sum of lengths.)
+
+Find the **minimum integer** aura strength `s` such that there exists a plan with activation cost at most `k` that protects **every** settlement.
+
+---
+
+### Input Format
+```
+n m k t
+p1 p2 ... pn
+q1 q2 ... qm
+```
+
+### Output Format
+```
+minimum_integer_s
+```
+
+### Constraints
+- `1 ≤ n, m ≤ 100000`
+- `1 ≤ k ≤ m`
+- `1 ≤ t ≤ 30`
+- `-10^9 ≤ pi, qi ≤ 10^9`
+- Arrays `p` and `q` are sorted non-decreasing
+
+---
+
+## Editorial
+
+### 1) Monotonicity ⇒ binary search on `s`
+If a strength `s` is sufficient, then any larger strength is also sufficient. So we binary search the minimum `s`.
+
+Use:
+- `lo = -1` (impossible)
+- `hi = 2·10^9` (always possible)
+
+Why `hi` always works: all coordinates lie in `[-10^9,10^9]`, so for any settlement and any obelisk, `|pi-qj| ≤ 2·10^9`. With `s = 2·10^9`, awakening a single obelisk covers all settlements; cost is `1 ≤ k` (since `k ≥ 1`) and `t ≥ 1`.
+
+So we need an efficient feasibility check for a fixed `s`.
+
+---
+
+### 2) For fixed `s`, map each settlement to a feasible obelisk-index interval
+Number obelisks by indices `1..m` in sorted order.
+
+Settlement `i` at position `p_i` is coverable by obelisk `j` iff:
+\[
+q_j \in [p_i-s,\; p_i+s]
+\]
+
+Define:
+- \(L_i\) = smallest index `j` with \(q_j \ge p_i - s\)
+- \(R_i\) = largest index `j` with \(q_j \le p_i + s\)
+
+Settlement `i` is coverable iff \(L_i \le R_i\).
+
+Because `p` and `q` are sorted, all \(L_i, R_i\) can be computed in **O(n+m)** with two pointers, and both sequences are non-decreasing in `i`.
+
+If a wave awakens the index block `[u..v]`, then settlement `i` is protected iff:
+\[
+[u..v] \cap [L_i..R_i] \ne \emptyset
+\]
+equivalently \(L_i \le v\) and \(R_i \ge u\).
+
+---
+
+### 3) One wave protects a contiguous segment of settlements
+Fix `[u..v]`. Condition \(L_i \le v\) holds for a prefix of settlements (since \(L_i\) is non-decreasing), and \(R_i \ge u\) holds for a suffix (since \(R_i\) is non-decreasing). Their intersection is a (possibly empty) **contiguous** interval of settlements.
+
+Therefore we can model any solution as covering the settlements from left to right using at most `t` **consecutive settlement segments**, one segment per wave (waves may still cover extra already-covered settlements, but that never helps and never needs to be explicitly represented).
+
+So feasibility becomes: can we partition settlements into ≤ `t` consecutive segments, each coverable by one wave, with total activation cost ≤ `k`?
+
+---
+
+### 4) Minimum cost to cover a settlement segment `[a..b]` with one wave
+We need a block `[u..v]` that intersects every interval \([L_i..R_i]\) for \(i \in [a..b]\).
+
+This is equivalent to:
+- \(u \le R_i\) for all \(i\) ⇒ \(u \le \min_{i=a..b} R_i = R_a\)
+- \(v \ge L_i\) for all \(i\) ⇒ \(v \ge \max_{i=a..b} L_i = L_b\)
+
+To minimize length \(v-u+1\):
+
+- If \(L_b \le R_a\): choose \(u=v\) anywhere in \([L_b, R_a]\), length = 1.
+- If \(L_b > R_a\): best is \(u=R_a,\ v=L_b\), length \(= L_b-R_a+1\).
+
+So:
+\[
+\text{cost}(a,b) = \max(1,\; L_b - R_a + 1)
+\]
+
+---
+
+### 5) DP over waves, optimized to **O(n)** per wave
+Let `prev[i]` be the minimum activation cost to cover the first `i` settlements using at most `wave-1` waves.
+
+For the next wave ending at settlement `i`, suppose it covers settlements `[a..i]`:
+\[
+dp[i] = \min_{1 \le a \le i} \Big(prev[a-1] + \max(1,\; L_i - R_a + 1)\Big)
+\]
+
+Split by whether \(R_a \ge L_i\):
+
+- If \(R_a \ge L_i\), then added cost is 1 ⇒ candidate \(prev[a-1] + 1\).
+- If \(R_a < L_i\), then added cost is \(L_i - R_a + 1\) ⇒ candidate:
+  \[
+  (prev[a-1] - R_a) + (L_i + 1)
+  \]
+
+As `i` increases, \(L_i\) is non-decreasing, so the boundary between “bad” (\(R_a < L_i\)) and “good” (\(R_a \ge L_i\)) moves monotonically. Maintain:
+- a pointer `ptr` for the largest `a` with \(R_a < L_i\),
+- a running minimum of `prev[a-1] - R_a` over bad `a`,
+- and a deque for the minimum `prev[a-1]` over good `a` (a sliding range).
+
+This yields **O(n)** per wave, so feasibility is:
+\[
+O(n+m+t\cdot n)
+\]
+Finally `s` is feasible iff the DP value for all `n` settlements is `≤ k`.
+
+---
+
+## Reference Implementation (C++17)
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+static const long long INF = (1LL << 60);
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int n, m, k, t;
+    cin >> n >> m >> k >> t;
+
+    vector<long long> p(n), q(m);
+    for (int i = 0; i < n; i++) cin >> p[i];
+    for (int j = 0; j < m; j++) cin >> q[j];
+
+    vector<int> L(n + 1), R(n + 1); // 1..n, obelisk indices are 1..m
+
+    auto feasible = [&](long long s) -> bool {
+        // Build [L_i, R_i] intervals in obelisk index space (1..m)
+        int l = 0, r = 0; // 0-based into q; r is first index with q[r] > p[i]+s
+        for (int i = 1; i <= n; i++) {
+            long long left = p[i - 1] - s;
+            long long right = p[i - 1] + s;
+
+            while (l < m && q[l] < left) l++;
+            if (r < l) r = l;
+            while (r < m && q[r] <= right) r++;
+
+            L[i] = l + 1; // 1-based
+            R[i] = r;     // r is count of <= right, hence last index is r (1-based)
+
+            if (L[i] > R[i]) return false; // settlement i cannot be covered at this s
+        }
+
+        // dpAtMost[i] = minimum activation cost to cover first i settlements
+        // using at most current number of waves
+        vector<long long> dpAtMost(n + 1, INF);
+        dpAtMost[0] = 0;
+
+        for (int wave = 1; wave <= t; wave++) {
+            const vector<long long> prev = dpAtMost; // at most wave-1
+            vector<long long> dp(n + 1, INF);
+            dp[0] = 0;
+
+            int ptr = 0;              // largest a with R[a] < L[i] (monotone as i increases)
+            int badProcessed = 0;      // processed a in [1..badProcessed]
+            long long bestBad = INF;   // min(prev[a-1] - R[a]) over processed bad a
+
+            deque<int> dq; // indices j (=a-1) with increasing prev[j]
+
+            for (int i = 1; i <= n; i++) {
+                // Add candidate j = i-1 (meaning a = i)
+                int j = i - 1;
+                if (prev[j] < INF) {
+                    while (!dq.empty() && prev[dq.back()] >= prev[j]) dq.pop_back();
+                    dq.push_back(j);
+                }
+
+                // Update ptr so that R[1..ptr] < L[i]
+                while (ptr < n && R[ptr + 1] < L[i]) ptr++;
+
+                // Only a<=i are valid
+                int bad = min(ptr, i); // bad a are 1..bad
+
+                // Update bestBad over a in [1..bad]
+                while (badProcessed < bad) {
+                    badProcessed++;
+                    if (prev[badProcessed - 1] < INF) {
+                        bestBad = min(bestBad, prev[badProcessed - 1] - (long long)R[badProcessed]);
+                    }
+                }
+
+                // Good a are (bad+1)..i, which corresponds to j=a-1 in [bad..i-1]
+                while (!dq.empty() && dq.front() < bad) dq.pop_front();
+
+                long long ans = INF;
+
+                // Case 1: R[a] >= L[i] => added cost = 1
+                if (!dq.empty()) {
+                    ans = min(ans, prev[dq.front()] + 1);
+                }
+
+                // Case 2: R[a] < L[i] => added cost = L[i] - R[a] + 1
+                if (bestBad < INF) {
+                    ans = min(ans, bestBad + (long long)L[i] + 1);
+                }
+
+                dp[i] = ans;
+            }
+
+            // Upgrade to "at most wave" waves
+            for (int i = 0; i <= n; i++) {
+                dpAtMost[i] = min(dpAtMost[i], dp[i]);
+            }
+        }
+
+        return dpAtMost[n] <= k;
+    };
+
+    long long lo = -1;
+    long long hi = 2000000000LL;
+
+    while (hi - lo > 1) {
+        long long mid = lo + (hi - lo) / 2;
+        if (feasible(mid)) hi = mid;
+        else lo = mid;
+    }
+
+    cout << hi << "\n";
+    return 0;
+}
+```

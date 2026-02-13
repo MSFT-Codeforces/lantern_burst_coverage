@@ -1,0 +1,55 @@
+
+You are an expert competitive programmer. 
+You will be provided with a problem statement, first analyze the problem, then provide your solution in C++. 
+Consider edge cases, time complexity, and space complexity. 
+Make sure your solution handles all constraints mentioned in the problem. 
+Your final solution should be a complete, compilable C++ program in a cpp codeblock.
+
+**Lantern Burst Coverage**
+
+On a line there are $n$ outposts at integer coordinates $a_1, a_2, \dots, a_n$ (sorted non-decreasing) and $m$ lantern posts at integer coordinates $b_1, b_2, \dots, b_m$ (sorted non-decreasing).
+
+If a lantern at coordinate $x$ is turned on with radius $s \ge 0$, it illuminates all outposts whose coordinates lie in the segment $[x-s, x+s]$. All turned-on lanterns must use the same integer radius $s$.
+
+Lanterns can only be turned on in bursts:
+
+- You may perform at most $t$ bursts.
+- In one burst, you choose a contiguous block of lantern indices $[l..r]$ (1-based) and turn on all lanterns $b_l, b_{l+1}, \dots, b_r$.
+- The activation effort of a burst equals its length $r-l+1$.
+- The total activation effort is the sum of burst lengths over all bursts, and it must be at most $k$.
+  (Bursts may overlap; overlapping indices still contribute again to the effort.)
+
+Find the minimum integer radius $s$ such that it is possible to illuminate every outpost under these rules.
+
+**Input Format:-**
+
+The first line contains four integers $n, m, k, t$.
+
+The second line contains $n$ integers $a_1, a_2, \dots, a_n$.
+
+The third line contains $m$ integers $b_1, b_2, \dots, b_m$.
+
+**Output Format:-**
+
+Print one integer: the minimum possible radius $s$.
+
+**Constraints:-**
+
+- $1 \le n, m \le 100000$
+- $1 \le k \le m$
+- $1 \le t \le 30$
+- $-10^9 \le a_i, b_j \le 10^9$
+- Arrays $a$ and $b$ are sorted non-decreasing
+
+**Examples:-**
+ - **Input:**
+```
+3 5 2 1
+0 10 20
+0 10 20 30 40
+```
+
+ - **Output:**
+```
+10
+```

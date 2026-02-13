@@ -1,0 +1,9 @@
+# Metadata
+**Category:** - Coding
+**Topic:** - Competitive Programming
+**Subtopic:** - ["Searching Algorithms", "Dynamic Programming", "Divide and Conquer", "Sorting Algorithms", "Stacks and Queues", "Algorithm Complexity and Big O Notation"]
+**Difficulty:** - Hard
+**Languages:** - C++
+**Number of Approaches:** - 4, ($O(C \cdot m^{2t} \cdot (n+m))$ -> $O(\log C \cdot m^{2t} \cdot (n+m))$ -> $O(\log C \cdot (n+m+tn^2))$ -> $O(\log C \cdot (n+m+tn))$)
+**Number of Chains:** - 7
+**Model-Breaking:** - True

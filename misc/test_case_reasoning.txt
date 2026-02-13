@@ -1,0 +1,49 @@
+### 1) Input range boundaries (minimum/maximum values)
+
+- **Smallest sizes:** `n=1`, `m=1`, with minimal budgets (`k=1`, `t=1`). Validates base-case handling (single outpost/lantern), and that the feasibility check doesn’t assume multiple points/intervals.
+- **Largest sizes:** `n=m=100000`, `t=30`, with `k` at extremes (`k=1` and `k=m`). Ensures time complexity is acceptable and no hidden `O(nm)` behavior.
+- **Coordinate extremes:** values at `-1e9` and `+1e9` to force answers near `2e9`. While the *radius* upper bound is ~`2e9`, computations like `b[j] + s` can reach ~`3e9`, so tests should expose **32-bit overflow** if `int` is used instead of 64-bit.
+- **Radius boundary `s=0`:** cases where all outposts coincide with (some) lantern coordinates so the true minimum is `0`, plus “almost `0`” cases where exactly one outpost is off by 1 to catch inclusive-boundary bugs.
+
+---
+
+### 2) Structural edge cases (sortedness, all equal, duplicates, boundary inclusions)
+
+(Arrays are guaranteed sorted, so “reversed input” is not applicable as a *valid* case.)
+
+- **Many duplicate outposts (`a`)**: all equal, or large runs of equal values. Catches code assuming strictly increasing coordinates.
+- **Many duplicate lanterns (`b`)**: repeated identical coordinates across multiple indices. Important because effort is paid per **index**, not per coordinate—so coordinate compression can be wrong unless it preserves multiplicities/indices.
+- **Duplicates in both arrays**, especially near coverage boundaries.
+- **Outposts all on one side of all lanterns:** ensures logic handles one-sided coverage correctly. (Given `k≥1`, you can always activate the nearest extreme lantern with effort 1; the minimum `s` is then driven by the farthest outpost from that lantern.)
+- **Tight inclusion cases:** outposts placed exactly at `b[j] ± s` for the minimal feasible `s`, to verify comparisons are inclusive (`<=`) and off-by-one errors don’t appear.
+
+---
+
+### 3) Stress conditions (large N, skewed distributions, worst-case patterns)
+
+- **Worst-case pointer/bounds movement:** outposts arranged so the set of lantern indices that can cover the current outpost shifts frequently (e.g., alternating near the left/right edge of feasible coverage). Stresses two-pointer / `lower_bound` usage and avoids “easy monotone” progress.
+- **Skewed distributions:**
+  - Dense cluster of many outposts plus a few far outliers: ensures one extreme point can dominate the answer and that the algorithm doesn’t “forget” it.
+  - Very dense lanterns vs sparse outposts (and vice versa): exposes assumptions that `n≈m`.
+- **Tradeoff-heavy `(k,t)` cases:**
+  - Small `s` requires activating many separated indices (high effort), but slightly larger `s` allows fewer/longer contiguous activations.
+  - Small `t` forces using **few intervals** even if `k` is moderate, versus larger `t` allowing more fragmented activation.
+
+---
+
+### 4) Common implementation mistakes to target
+
+- **Off-by-one in effort (`r-l+1`)** and in total cost comparisons vs `k`.
+- **Misreading “at most t bursts” as “exactly t bursts”**: cases where feasibility requires fewer than `t`.
+- **Overlap accounting:** Bursts may overlap, and overlaps *do* add to effort; however, note a key property:
+  - Because overlap never increases illuminated coverage but increases effort, **an optimal plan can be assumed w.l.o.g. to use non-overlapping bursts** (any overlaps can be merged/trimmed without worsening constraints).
+  - Still, tests should catch incorrect solutions that mistakenly compute effort as “unique activated indices” rather than sum of burst lengths.
+- **32-bit overflow:** as noted, `b+s` / `a±s` can exceed `2^31-1` even though `s` itself fits in 32-bit.
+- **Indexing mistakes:** bursts are 1-based in statement; edge cases where the best interval starts at 1 or ends at `m`.
+- **Binary search bounds/monotonicity:** tight instances where feasibility flips exactly at some `s` help reveal incorrect feasibility checks (especially around duplicates and inclusive boundaries).
+
+---
+
+### 5) Invalid input
+
+Not applicable: the problem guarantees sorted arrays and valid ranges, so test design should focus on valid inputs only.

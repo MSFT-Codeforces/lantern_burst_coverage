@@ -1,0 +1,297 @@
+## Problem — The Lantern Schedules of Asterline Causeway (Hard)
+
+On the long Asterline Causeway, a courier guild wants to keep **every** outpost illuminated at night.
+
+- There are `n` outposts at integer coordinates `a1, a2, …, an` (sorted non-decreasing).
+- There are `m` lantern posts at integer coordinates `b1, b2, …, bm` (sorted non-decreasing).
+
+All lanterns that are turned on will shine with the **same integer radius** `s ≥ 0`.
+
+A lantern at coordinate `x` illuminates every outpost within distance `s`, i.e. all outposts in `[x − s, x + s]`.
+
+Unfortunately, the old power grid only allows activating lanterns in **bursts**:
+
+- You may perform **at most `t` bursts**.
+- In one burst, you must choose a **contiguous block of lanterns by index** `[l..r]` (1-based), and turn on **all** lanterns `bl, b(l+1), …, br`.
+- The total activation effort equals the **sum of block lengths** over all bursts:
+  \[
+  \sum (r - l + 1)
+  \]
+  This sum must be **≤ `k`**.
+  (Blocks may overlap; overlap still counts again because effort is defined as the sum of lengths.)
+
+Your task: find the **minimum integer** radius `s` such that there exists a plan within the above limits that illuminates **every** outpost.
+
+---
+
+### Input Format
+```
+n m k t
+a1 a2 ... an
+b1 b2 ... bm
+```
+
+### Output Format
+```
+minimum_integer_s
+```
+
+### Constraints
+- `1 ≤ n, m ≤ 100000`
+- `1 ≤ k ≤ m`
+- `1 ≤ t ≤ 30`
+- `-10^9 ≤ ai, bi ≤ 10^9`
+- Arrays `a` and `b` are sorted non-decreasing
+
+---
+
+## Sample Tests
+
+### Sample 1
+Input
+```
+3 5 2 1
+0 10 20
+0 10 20 30 40
+```
+Output
+```
+10
+```
+
+### Sample 2
+Input
+```
+4 4 3 2
+1 2 8 9
+0 3 6 10
+```
+Output
+```
+2
+```
+
+### Sample 3
+Input
+```
+5 6 4 2
+-5 -1 0 4 9
+-6 -2 1 3 7 10
+```
+Output
+```
+3
+```
+
+---
+
+## Editorial
+
+### 1) Why binary search on `s` works
+If some radius `s` is sufficient, then any larger radius also works (lanterns illuminate more). Therefore feasibility is monotone, so we can binary search the minimum `s`.
+
+Bounds:
+- `lo = -1` (impossible)
+- `hi = 2·10^9` (always possible)
+
+Reason `hi` works: all coordinates lie in `[-10^9, 10^9]`, so for any outpost and any lantern, the distance is at most `2·10^9`. With `s = 2·10^9`, turning on just one lantern illuminates every outpost, effort `= 1 ≤ k`.
+
+So the core is: **given `s`, check if it’s feasible**.
+
+---
+
+### 2) For a fixed `s`, convert geometry into index-intervals
+Index lanterns `1..m` in sorted order.
+
+An outpost at `a[i]` is illuminated by lantern `j` iff:
+\[
+b[j] \in [a[i]-s, \ a[i]+s]
+\]
+
+Define:
+- `L[i]` = first lantern index with `b[L[i]] ≥ a[i]-s`
+- `R[i]` = last lantern index with `b[R[i]] ≤ a[i]+s`
+
+Outpost `i` is coverable iff `L[i] ≤ R[i]`.
+
+Because both arrays are sorted, all `L[i], R[i]` can be computed in **O(n+m)** using two pointers, and both sequences are non-decreasing.
+
+Turning on a burst `[u..v]` illuminates outpost `i` iff `[u..v]` intersects `[L[i]..R[i]]`.
+
+---
+
+### 3) A single burst covers a contiguous chunk of outposts
+Because `L[i]` and `R[i]` are non-decreasing in `i`, the set of outposts whose intervals intersect a fixed `[u..v]` forms a contiguous interval of outpost indices.
+
+Thus any feasible plan can be seen as:
+- splitting outposts into at most `t` consecutive segments,
+- each segment is handled by exactly one burst.
+
+So we just need to cover outposts left-to-right with ≤ `t` segments, minimizing total effort.
+
+---
+
+### 4) Minimum effort to cover an outpost segment `[a..b]` with one burst
+We need `[u..v]` that intersects every `[L[i]..R[i]]` for `i=a..b`.
+
+This is possible iff we pick:
+- `u` not larger than all `R[i]` ⇒ `u ≤ min R[i] = R[a]` (since `R` non-decreasing)
+- `v` not smaller than all `L[i]` ⇒ `v ≥ max L[i] = L[b]` (since `L` non-decreasing)
+
+Minimum length:
+- If `L[b] ≤ R[a]`, we can pick a single index `u=v` in the overlap ⇒ effort `1`.
+- Otherwise best is `u=R[a], v=L[b]` ⇒ effort `L[b]-R[a]+1`.
+
+So:
+\[
+\text{cost}(a,b) = \max(1,\ L[b]-R[a]+1)
+\]
+
+---
+
+### 5) DP over bursts, optimized to O(t·n)
+Let `prev[i]` be the minimum effort to cover the first `i` outposts using at most `wave-1` bursts.
+
+Transition for covering `[a..i]` with the last burst:
+\[
+dp[i] = \min_{1\le a\le i}\Big(prev[a-1] + \max(1,\ L[i]-R[a]+1)\Big)
+\]
+
+Split candidates by whether `R[a] ≥ L[i]`:
+
+- **Good** (`R[a] ≥ L[i]`): added cost is `1` ⇒ minimize `prev[a-1] + 1`.
+- **Bad** (`R[a] < L[i]`): added cost is `L[i] - R[a] + 1` ⇒
+  \[
+  (prev[a-1]-R[a]) + (L[i]+1)
+  \]
+
+As `i` increases, `L[i]` increases, so the boundary between bad/good `a` moves monotonically.
+We maintain:
+- a moving pointer determining how many `a` are bad,
+- the minimum of `prev[a-1]-R[a]` over bad `a`,
+- a deque to query the minimum `prev[a-1]` over good `a`.
+
+This yields **O(n)** per burst, i.e. **O(t·n)** per feasibility check, plus `O(n+m)` to build intervals.
+
+Total: `O(log(2e9) * (n+m+t·n))`, which fits.
+
+---
+
+## Reference Implementation (C++17)
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+static const long long INF = (1LL << 60);
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int n, m, k, t;
+    cin >> n >> m >> k >> t;
+
+    vector<long long> a(n), b(m);
+    for (int i = 0; i < n; i++) cin >> a[i];
+    for (int j = 0; j < m; j++) cin >> b[j];
+
+    // 1-based arrays for convenience in DP formulas
+    vector<int> L(n + 1), R(n + 1);
+
+    auto feasible = [&](long long s) -> bool {
+        // Build [L[i], R[i]] for each outpost i in lantern-index space.
+        int lptr = 0; // first b[lptr] >= a[i]-s
+        int rptr = 0; // first b[rptr] >  a[i]+s
+        for (int i = 1; i <= n; i++) {
+            long long left = a[i - 1] - s;
+            long long right = a[i - 1] + s;
+
+            while (lptr < m && b[lptr] < left) lptr++;
+            if (rptr < lptr) rptr = lptr;
+            while (rptr < m && b[rptr] <= right) rptr++;
+
+            L[i] = lptr + 1; // convert to 1-based
+            R[i] = rptr;     // rptr is count of <= right, so last valid index is rptr (1-based)
+
+            if (L[i] > R[i]) return false; // outpost i cannot be illuminated at radius s
+        }
+
+        // dpAtMost[i] = min effort to cover first i outposts with at most current bursts
+        vector<long long> dpAtMost(n + 1, INF);
+        dpAtMost[0] = 0;
+
+        for (int wave = 1; wave <= t; wave++) {
+            vector<long long> prev = dpAtMost;
+            vector<long long> dp(n + 1, INF);
+            dp[0] = 0;
+
+            int ptr = 0;              // largest a with R[a] < L[i]
+            int badProcessed = 0;      // processed bad a from 1..badProcessed
+            long long bestBad = INF;   // min(prev[a-1] - R[a]) over processed bad a
+
+            // deque holds indices j = a-1 for "good" candidates, with increasing prev[j]
+            deque<int> dq;
+
+            for (int i = 1; i <= n; i++) {
+                // Add candidate a=i (so j=i-1) into deque structure
+                int j = i - 1;
+                if (prev[j] < INF) {
+                    while (!dq.empty() && prev[dq.back()] >= prev[j]) dq.pop_back();
+                    dq.push_back(j);
+                }
+
+                // Move ptr so that R[1..ptr] < L[i]
+                while (ptr < n && R[ptr + 1] < L[i]) ptr++;
+
+                int bad = min(ptr, i);
+
+                // Update bestBad for a in [1..bad]
+                while (badProcessed < bad) {
+                    badProcessed++;
+                    if (prev[badProcessed - 1] < INF) {
+                        bestBad = min(bestBad, prev[badProcessed - 1] - (long long)R[badProcessed]);
+                    }
+                }
+
+                // Good a are in (bad..i], i.e. j=a-1 in [bad..i-1]
+                while (!dq.empty() && dq.front() < bad) dq.pop_front();
+
+                long long ans = INF;
+
+                // Good case: +1
+                if (!dq.empty()) {
+                    ans = min(ans, prev[dq.front()] + 1);
+                }
+
+                // Bad case: (prev[a-1]-R[a]) + (L[i]+1)
+                if (bestBad < INF) {
+                    ans = min(ans, bestBad + (long long)L[i] + 1);
+                }
+
+                dp[i] = ans;
+            }
+
+            // allow using fewer than 'wave' bursts
+            for (int i = 0; i <= n; i++) {
+                dpAtMost[i] = min(dpAtMost[i], dp[i]);
+            }
+        }
+
+        return dpAtMost[n] <= k;
+    };
+
+    long long lo = -1;
+    long long hi = 2000000000LL;
+
+    while (hi - lo > 1) {
+        long long mid = lo + (hi - lo) / 2;
+        if (feasible(mid)) hi = mid;
+        else lo = mid;
+    }
+
+    cout << hi << "\n";
+    return 0;
+}
+```
+

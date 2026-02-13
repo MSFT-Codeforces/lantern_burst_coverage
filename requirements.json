@@ -1,0 +1,17 @@
+{
+  "original": "https://www.codeforces.com/problemset/problem/702/C",
+  "title": "Lantern Burst Coverage",
+  "tags": [
+    "Searching Algorithms",
+    "Dynamic Programming",
+    "Divide and Conquer",
+    "Sorting Algorithms",
+    "Stacks and Queues",
+    "Algorithm Complexity and Big O Notation"
+  ],
+  "model_breaking": true,
+  "time": 4,
+  "space": 32,
+  "new_colab_link": "https://colab.research.google.com/drive/10OYOkiKWAPFeuNOYMTE0KkTMmuD3Zi44",
+  "github_link": "https://github.com/MSFT-Codeforces/lantern_burst_coverage"
+}
