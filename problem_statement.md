@@ -1,5 +1,3 @@
-**Lantern Burst Coverage**
-
 Time Limit: **4 seconds**
 
 Memory Limit: **32 MB**
