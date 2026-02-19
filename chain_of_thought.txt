@@ -20,23 +20,20 @@ The goal is to output the minimum integer radius $s$ such that there exists at l
 ---
 
 **[section_02]**
-Designing edge cases and validation inputs (without solving)
+Explaining the provided sample test cases
 **[atomic_02_01]**
-Smallest sizes: $n=1$ and/or $m=1$. These cases ensure the implementation handles single-element arrays and does not assume multiple lanterns or outposts exist. They also help validate behavior when only one burst or one lantern is even possible.
+Sample 1:
+Input has $n=4$, $m=2$, $k=1$, $t=1$, outposts $[0,0,1,1]$, lanterns $[0,2]$.
+Because $t=1$ and total effort $\le k=1$, we can activate exactly one burst of length $1$, i.e., exactly one lantern.
+If we activate lantern at $x=0$, it illuminates $[-s,s]$, which covers coordinate $1$ iff $s \ge 1$. So $s=1$ works (covers all outposts).
+If we activate lantern at $x=2$, it illuminates $[2-s,2+s]$, which covers coordinate $0$ iff $s \ge 2$.
+Thus the minimum radius is $s=1$ (the sample output).
 **[atomic_02_02]**
-Budget lower bound: $k=1$. This forces the total effort to be at most 1, meaning that across all bursts the sum of block lengths cannot exceed 1, which is a very restrictive regime and can expose mistakes where effort is accidentally treated as “unique activated lanterns.”
-**[atomic_02_03]**
-Budget upper regime: $k=m$. This allows activating an entire lantern array in one burst with effort $m$, or activating multiple bursts whose total lengths sum to $m$. It is useful to confirm that the effort constraint is applied globally and not per burst.
-**[atomic_02_04]**
-Burst-count extremes: $t=1$ (must be a single contiguous block) versus $t=30$ (many bursts allowed). These cases highlight the difference between being constrained by contiguity in one block and being allowed multiple blocks while still paying total effort.
-**[atomic_02_05]**
-Duplicate coordinates: examples where $a_i=a_{i+1}$ and/or $b_j=b_{j+1}$. This checks that coordinate equality does not break comparisons, and that all items are still counted, especially when multiple outposts share the same feasible lantern positions.
-**[atomic_02_06]**
-Negative and extreme values: coordinates near $-10^9$ and $10^9$, and mixes like outposts negative while lanterns positive. Such tests validate that arithmetic on $a_i \pm s$ and comparisons remain correct under large magnitudes.
-**[atomic_02_07]**
-Uncoverable-at-small-radius scenarios: include at least one outpost far from every lantern so that for small $s$ it cannot be illuminated. This ensures the system correctly identifies radii where illumination is impossible due to geometry alone, independent of $k$ and $t$.
-**[atomic_02_08]**
-Overlap-sensitive effort scenarios: craft cases where the most “intuitive” plan might reuse the same lantern indices in multiple bursts. These inputs ensure that overlapping bursts are charged multiple times exactly as stated, preventing accidental “union-of-indices” interpretations.
+Sample 2:
+Input has $n=4$, $m=3$, $k=2$, $t=2$, outposts $[-3,-1,1,3]$, lanterns $[-2,0,2]$.
+Radius $s=0$ cannot work because each activated lantern would illuminate only its own coordinate, and none of the lantern coordinates equals any outpost coordinate here.
+For $s=1$, activate two bursts of length $1$ each (total effort $1+1=2 \le k$) to turn on lanterns at $x=-2$ and $x=2$:
+they illuminate $[-3,-1]$ and $[1,3]$, covering all outposts. Since $s=0$ fails and $s=1$ works, the minimum radius is $s=1$ (the sample output).
 
 ---
 
@@ -183,3 +180,24 @@ Deque and pointer invariants must match the split between good and bad candidate
 Feasibility at the end must compare the computed minimum total effort against $k$ (not against $m$ or against a union size). This is where overlap behavior is enforced implicitly: because we optimize the sum of burst lengths, overlapping bursts are never “free” and are naturally penalized.
 **[atomic_07_08]**
 A practical validation set should include: duplicates in $a$ and $b$, $t=1$ with small $k$, cases where the answer is $0$ (outposts coinciding with lanterns and $k \ge 1$), and cases where feasibility flips sharply at a particular $s$. These inputs are targeted at catching off-by-one mistakes and boundary misclassification in the good/bad split.
+
+---
+
+**[section_08]**
+Designing edge cases and validation inputs (without solving)
+**[atomic_08_01]**
+Smallest sizes: $n=1$ and/or $m=1$. These cases ensure the implementation handles single-element arrays and does not assume multiple lanterns or outposts exist. They also help validate behavior when only one burst or one lantern is even possible.
+**[atomic_08_02]**
+Budget lower bound: $k=1$. This forces the total effort to be at most $1$, meaning that across all bursts the sum of block lengths cannot exceed $1$, which is a very restrictive regime and can expose mistakes where effort is accidentally treated as “unique activated lanterns.”
+**[atomic_08_03]**
+Budget upper regime: $k=m$. This allows activating an entire lantern array in one burst with effort $m$, or activating multiple bursts whose total lengths sum to $m$. It is useful to confirm that the effort constraint is applied globally and not per burst.
+**[atomic_08_04]**
+Burst-count extremes: $t=1$ (must be a single contiguous block) versus $t=30$ (many bursts allowed). These cases highlight the difference between being constrained by contiguity in one block and being allowed multiple blocks while still paying total effort.
+**[atomic_08_05]**
+Duplicate coordinates: examples where $a_i=a_{i+1}$ and/or $b_j=b_{j+1}$. This checks that coordinate equality does not break comparisons, and that all items are still counted, especially when multiple outposts share the same feasible lantern positions.
+**[atomic_08_06]**
+Negative and extreme values: coordinates near $-10^9$ and $10^9$, and mixes like outposts negative while lanterns positive. Such tests validate that arithmetic on $a_i \pm s$ and comparisons remain correct under large magnitudes.
+**[atomic_08_07]**
+Uncoverable-at-small-radius scenarios: include at least one outpost far from every lantern so that for small $s$ it cannot be illuminated. This ensures the system correctly identifies radii where illumination is impossible due to geometry alone, independent of $k$ and $t$.
+**[atomic_08_08]**
+Overlap-sensitive effort scenarios: craft cases where the most “intuitive” plan might reuse the same lantern indices in multiple bursts. These inputs ensure that overlapping bursts are charged multiple times exactly as stated, preventing accidental “union-of-indices” interpretations.
