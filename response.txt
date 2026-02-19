@@ -39,6 +39,25 @@ We must output the minimum integer radius $s$ such that all outposts can be illu
 
 ---
 
+**2.5. How the code operates on the input (sample walkthrough)**  
+
+The program reads:
+- $n, m, k, t$
+- outposts $a_1..a_n$
+- lanterns $b_1..b_m$
+
+Then it binary searches the minimum radius $s$ and uses the feasibility check described above.
+
+For example, in Sample 1:
+```
+4 2 1 1
+0 0 1 1
+0 2
+```
+Because $t=1$ and $k=1$, we can only afford to activate one lantern (one burst of length $1$).  
+With $s=0$, turning on the lantern at $0$ illuminates only $[0,0]$, which does not cover outposts at $1$.  
+With $s=1$, turning on the lantern at $0$ illuminates $[-1,1]$, covering all outposts, so the minimum radius is $1$.
+
 **3. Code**
 ```cpp
 #include <algorithm>

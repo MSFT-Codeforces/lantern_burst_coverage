@@ -1,5 +1,6 @@
 **[section_01]**
 Interpreting the objects, actions, and objective
+CHAIN01: Problem understanding and definitions
 **[atomic_01_01]**
 We are given two sorted (non-decreasing) integer coordinate lists on a line: $n$ outposts at $a_1, a_2, \dots, a_n$ and $m$ lantern posts at $b_1, b_2, \dots, b_m$. Because the order is non-decreasing (not strictly increasing), multiple outposts or lanterns may share the same coordinate, and they should still be treated as separate items.
 **[atomic_01_02]**
@@ -21,6 +22,7 @@ The goal is to output the minimum integer radius $s$ such that there exists at l
 
 **[section_02]**
 Explaining the provided sample test cases
+CHAIN02: Walkthrough of the provided samples
 **[atomic_02_01]**
 Sample 1:
 Input has $n=4$, $m=2$, $k=1$, $t=1$, outposts $[0,0,1,1]$, lanterns $[0,2]$.

@@ -5,10 +5,12 @@ Memory Limit: **32 MB**
 On a line there are $n$ outposts at integer coordinates $a_1, a_2, \dots, a_n$ (sorted non-decreasing) and $m$ lantern posts at integer coordinates $b_1, b_2, \dots, b_m$ (sorted non-decreasing).
 
 If a lantern at coordinate $x$ is turned on with radius $s \ge 0$, it illuminates all outposts whose coordinates lie in the segment $[x-s, x+s]$. All turned-on lanterns must use the same integer radius $s$.
+An outpost is considered illuminated if it lies inside the illuminated segment of at least one turned-on lantern.
 
 Lanterns can only be turned on in bursts:
 
 - You may perform at most $t$ bursts.
+- You may perform fewer than $t$ bursts (possibly $0$), but the goal is still to illuminate every outpost.
 - In one burst, you choose a contiguous block of lantern indices $[l..r]$ (1-based) and turn on all lanterns $b_l, b_{l+1}, \dots, b_r$.
 - The activation effort of a burst equals its length $r-l+1$.
 - The total activation effort is the sum of burst lengths over all bursts, and it must be at most $k$.
