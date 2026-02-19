@@ -65,5 +65,5 @@ Print one integer: the minimum possible radius $s$.
 In the first example, we may use one burst (since $t=1$) and the total effort must be at most $k=1$, so we can turn on exactly one lantern.  
 Choosing the lantern at $x=0$ with radius $s=1$ illuminates the segment $[-1,1]$, which covers all outposts at coordinates $0,0,1,1$. Hence the minimum possible radius is $1$.
 
-In the first example, we can use up to $t=2$ bursts with total effort at most $k=2$.  
-With radius $s=1$, turn on lanterns at $x=-2$ and $x=2$ using two bursts of length $1$ each (total effort $2$). They illuminate $[-3,-1]$ and $[1,3]$, covering all outposts $-3,-1,1,3$. Therefore the minimum radius is $1$.
+In the second example, we can use up to $t=2$ bursts with total effort at most $k=2$.  
+With radius $s=1$, turn on lanterns at $x=-2$ and $x=2$ using two bursts of length $1$ each (total effort $1+1=2$). They illuminate $[-3,-1]$ and $[1,3]$, covering all outposts at coordinates $-3,-1,1,3$. Therefore the minimum radius is $1$.
