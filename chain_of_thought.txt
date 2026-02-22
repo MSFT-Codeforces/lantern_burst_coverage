@@ -1,6 +1,5 @@
 **[section_01]**
 Interpreting the objects, actions, and objective
-CHAIN01: Problem understanding and definitions
 **[atomic_01_01]**
 We are given two sorted (non-decreasing) integer coordinate lists on a line: $n$ outposts at $a_1, a_2, \dots, a_n$ and $m$ lantern posts at $b_1, b_2, \dots, b_m$. Because the order is non-decreasing (not strictly increasing), multiple outposts or lanterns may share the same coordinate, and they should still be treated as separate items.
 **[atomic_01_02]**
@@ -21,8 +20,7 @@ The goal is to output the minimum integer radius $s$ such that there exists at l
 ---
 
 **[section_02]**
-Explaining the provided sample test cases
-CHAIN02: Walkthrough of the provided samples
+Exploring the provided sample test cases and identifying edge cases
 **[atomic_02_01]**
 Sample 1:
 Input has $n=4$, $m=2$, $k=1$, $t=1$, outposts $[0,0,1,1]$, lanterns $[0,2]$.
@@ -36,11 +34,21 @@ Input has $n=4$, $m=3$, $k=2$, $t=2$, outposts $[-3,-1,1,3]$, lanterns $[-2,0,2]
 Radius $s=0$ cannot work because each activated lantern would illuminate only its own coordinate, and none of the lantern coordinates equals any outpost coordinate here.
 For $s=1$, activate two bursts of length $1$ each (total effort $1+1=2 \le k$) to turn on lanterns at $x=-2$ and $x=2$:
 they illuminate $[-3,-1]$ and $[1,3]$, covering all outposts. Since $s=0$ fails and $s=1$ works, the minimum radius is $s=1$ (the sample output).
+**[atomic_02_03]**
+Edge case — answer is $0$: If every outpost coordinate coincides with at least one lantern coordinate, then $s=0$ suffices as long as the activation plan can cover the required lanterns. For example, $n=2$, $m=2$, $k=2$, $t=1$, outposts $[3,5]$, lanterns $[3,5]$: a single burst $[1..2]$ with effort $2 \le k$ activates both lanterns, and $s=0$ illuminates both outposts exactly.
+**[atomic_02_04]**
+Edge case — $t=1$, $k=1$ (single lantern): Only one burst of length $1$ is allowed, so exactly one lantern is activated. The answer equals $\min_{j} \max_{i} |a_i - b_j|$, i.e., the lantern that minimizes the maximum distance to any outpost. This tests whether the solution correctly handles the tightest possible activation budget.
+**[atomic_02_05]**
+Edge case — duplicate coordinates: Multiple outposts or lanterns can share the same coordinate. The solution must not collapse duplicates; each index in the lantern array is a distinct activation target. For instance, outposts $[5,5,5]$ with lanterns $[5,5]$ and $k=1$, $t=1$ should yield $s=0$ by activating either single lantern.
+**[atomic_02_06]**
+Edge case — $k=m$ (full activation budget available): When the effort budget can cover all $m$ lanterns, the constraint reduces to partitioning the entire lantern index range into at most $t$ contiguous bursts. If $t \ge 1$, a single burst $[1..m]$ suffices and the problem degenerates to the simpler "all lanterns active" scenario, where the answer is the maximum over all outposts of their distance to the nearest lantern.
+**[atomic_02_07]**
+Edge case — extreme coordinate separation: If the leftmost outpost is at $-10^9$ and the rightmost lantern is at $10^9$ (or vice versa), the answer can be as large as $2 \cdot 10^9$. This stresses 64-bit arithmetic requirements, since $a_i \pm s$ can exceed 32-bit range. Any solution using 32-bit integers for intermediate comparisons would produce incorrect results here.
 
 ---
 
 **[section_03]**
-Implementing brute force over radii and burst selections
+Exploring a brute-force approach over radii and burst selections
 **[atomic_03_01]**
 A first naive approach is to iterate integer radii $s$ from $0$ upward until we find one that allows illuminating all outposts. For each $s$, we would attempt to decide whether there exists a set of at most $t$ bursts (contiguous index blocks) whose activation illuminates all outposts while keeping total effort at most $k$.
 **[atomic_03_02]**
@@ -61,7 +69,7 @@ which is infeasible for the given constraints. Memory usage is not the main issu
 ---
 
 **[section_04]**
-Replacing linear radius scan with binary search while keeping a naive feasibility check
+Exploring binary search on the radius to reduce the search space
 **[atomic_04_01]**
 A clear improvement over scanning all radii is to binary search the minimum feasible $s$. This relies on a monotonicity property: if a radius $s$ is feasible, then any larger radius $s' > s$ is also feasible because each activated lantern illuminates a superset of outposts.
 **[atomic_04_02]**
@@ -82,7 +90,7 @@ So the second attempt fails because it improves the outer search but not the inn
 ---
 
 **[section_05]**
-Modeling illumination as index intervals and using a quadratic DP per feasibility check
+Exploring an interval-based model with DP for the feasibility check
 **[atomic_05_01]**
 To avoid enumerating bursts directly, we can model, for a fixed radius $s$, which lantern indices are capable of illuminating each outpost. For outpost $i$, the lanterns that can illuminate it are those with coordinates in $[a_i-s, a_i+s]$.
 **[atomic_05_02]**
@@ -121,7 +129,7 @@ and with binary search the total is $O(\log C \cdot (n+m+tn^2))$. For $n=10^5$, 
 ---
 
 **[section_06]**
-Optimizing the DP transition with monotone structures to achieve linear time per burst layer
+Exploring monotone structures to speed up the DP transition per burst layer
 **[atomic_06_01]**
 The quadratic bottleneck in Section 5 is the inner minimization over $p$. To optimize it, we examine the structure of:
 $$
@@ -165,7 +173,7 @@ time and $O(n)$ memory per radius. With binary search, the total time becomes $O
 ---
 
 **[section_07]**
-Verifying invariants, corner conditions, and numeric safety in the final method
+Exploring invariants, corner conditions, and numeric safety for correctness
 **[atomic_07_01]**
 Binary search correctness depends on having a guaranteed infeasible lower bound and feasible upper bound. Using $lo=-1$ as infeasible is safe because radii are constrained to $s \ge 0$. Using $hi=2 \cdot 10^9$ is safe under the coordinate bounds because any outpost-lantern distance is at most $2 \cdot 10^9$.
 **[atomic_07_02]**
