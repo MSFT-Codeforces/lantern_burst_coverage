@@ -37,6 +37,7 @@ Print one integer: the minimum possible radius $s$.
 - $1 \le t \le 30$
 - $-10^9 \le a_i, b_j \le 10^9$
 - Arrays $a$ and $b$ are sorted non-decreasing
+
 **Examples:-**
  - **Input:**
 ```
