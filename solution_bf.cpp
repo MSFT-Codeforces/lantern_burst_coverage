@@ -148,6 +148,6 @@ int main() {
         cin >> solver.b[j];
     }
 
-    cout << solver.solve() << "\n";
+    cout << solver.solve();
     return 0;
 }

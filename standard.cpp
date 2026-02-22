@@ -204,6 +204,6 @@ int main() {
         }
     }
 
-    std::cout << highRadius << "\n";
+    std::cout << highRadius;
     return 0;
 }
