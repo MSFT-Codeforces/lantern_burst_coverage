@@ -15,48 +15,19 @@ We must output the minimum integer radius $s$ such that all outposts can be illu
 
 **2. Optimal Approach**
 
-1. **Binary search on the radius $s$.**  
-   Feasibility is monotone: if radius $s$ is sufficient, any larger radius is also sufficient. We binary search the minimum feasible $s$ in the range $[-1, 2 \cdot 10^9]$.
+The key observation is that the answer is monotone: if some radius $s$ is large enough to illuminate every outpost, then any larger radius will also work. This lets us binary search on the radius. We search within the range $[0, 2 \cdot 10^9]$, and for each candidate radius we run a feasibility check to determine whether all outposts can be illuminated under the burst and effort constraints.
 
-2. **For a fixed radius, compute per-outpost feasible lantern index intervals.**  
-   For each outpost (1-based index `outpostIndex`), compute:
-   - `leftIndex[outpostIndex]`: the first lantern index whose coordinate is $\ge a - s$
-   - `rightIndex[outpostIndex]`: the last lantern index whose coordinate is $\le a + s$
+The feasibility check for a fixed radius works in two stages.
 
-   If `leftIndex[outpostIndex] > rightIndex[outpostIndex]` for any outpost, then this radius cannot illuminate that outpost at all, so the radius is infeasible.
+In the first stage, we figure out which lanterns can serve each outpost. Because both arrays are sorted, we sweep through outposts left to right while advancing two pointers over the lantern array. For each outpost at coordinate $a$, we find the contiguous range of lantern indices whose coordinates fall within $[a - s, a + s]$. We call the left end of this range $L$ and the right end $R$. If any outpost has no lantern in range (its $L$ exceeds its $R$), the radius is immediately infeasible.
 
-3. **Dynamic programming to minimize total effort with at most `maxBurstCount` bursts.**  
-   If one burst is used to cover a consecutive segment of outposts from `startOutpost` to `endOutpost`, the minimum possible burst length (effort) needed is:
-   $$
-   \text{cost}(startOutpost, endOutpost) = \max(1,\ leftIndex[endOutpost] - rightIndex[startOutpost] + 1).
-   $$
-   We compute the minimum effort to cover the first $i$ outposts using at most a certain number of bursts, and finally check whether the minimum effort to cover all outposts is $\le k$.
+In the second stage, we use dynamic programming to determine the minimum total effort needed to cover all outposts using at most $t$ bursts. The DP builds up layer by layer: the first layer considers plans using one burst, the second layer adds a second burst, and so on up to $t$ layers. At each layer, for every outpost position $i$, we ask: "If we assign one new burst to cover outposts from some start position $p$ through $i$, what is the cheapest way to do that, given that the outposts before $p$ were already covered by previous bursts?" The cost of a single burst covering outposts $p$ through $i$ depends on how wide the lantern index span must be — specifically, the burst must stretch from the rightmost $L$ value in the group down to the leftmost $R$ value, with a minimum cost of 1.
 
-   The naive transition is quadratic, but it can be optimized to $O(n)$ per burst by splitting candidates into:
-   - “good starts” where `rightIndex[startOutpost] >= leftIndex[endOutpost]` (added cost is 1),
-   - “bad starts” otherwise (added cost becomes `leftIndex[endOutpost] - rightIndex[startOutpost] + 1`),
-   and maintaining the needed minima with a deque and a running minimum.
+A naive scan over all possible starting positions $p$ for each $i$ would be quadratic, but we can bring each DP layer down to linear time by exploiting monotonicity. We split candidate start positions into two categories. A "good" start is one where the lantern range already overlaps with the current outpost's range, so the burst costs only 1 unit of effort. A "bad" start is one where there is a gap, and the cost grows with the size of that gap. As we sweep $i$ from left to right, the boundary between good and bad starts only moves forward, so we can track the best good candidate using a monotone deque (which gives us the minimum previous-layer cost in constant time) and the best bad candidate using a simple running minimum. At each outpost we take the better of these two options, giving us the optimal effort for covering up to that outpost in the current layer.
+
+After running all $t$ layers, we check whether the minimum total effort to cover every outpost is within the budget $k$. If so, the candidate radius is feasible; otherwise it is not. The binary search narrows in on the smallest feasible radius and reports it.
 
 ---
-
-**2.5. How the code operates on the input (sample walkthrough)**  
-
-The program reads:
-- $n, m, k, t$
-- outposts $a_1..a_n$
-- lanterns $b_1..b_m$
-
-Then it binary searches the minimum radius $s$ and uses the feasibility check described above.
-
-For example, in Sample 1:
-```
-4 2 1 1
-0 0 1 1
-0 2
-```
-Because $t=1$ and $k=1$, we can only afford to activate one lantern (one burst of length $1$).  
-With $s=0$, turning on the lantern at $0$ illuminates only $[0,0]$, which does not cover outposts at $1$.  
-With $s=1$, turning on the lantern at $0$ illuminates $[-1,1]$, covering all outposts, so the minimum radius is $1$.
 
 **3. Code**
 ```cpp
@@ -273,15 +244,61 @@ int main() {
 
 **4. Code Explanation**
 
-- `main` reads input, then binary searches the smallest radius between `lowRadius = -1` (infeasible) and `highRadius = 2000000000` (feasible).
-- `isFeasibleRadius` checks a candidate radius:
-  1. Calls `computeCoverageIntervals` to build `leftIndex[outpostIndex]` and `rightIndex[outpostIndex]` for each outpost (1-based outpost indexing in these arrays). If any interval is empty (`leftIndex > rightIndex`), the radius is immediately rejected.
-  2. Runs a DP that minimizes total effort to cover the first `endOutpost` outposts with at most `maxBurstCount` bursts.
-     - Covering outposts `startOutpost..endOutpost` with one burst costs $\max(1,\ leftIndex[endOutpost] - rightIndex[startOutpost] + 1)$.
-     - The DP transition is optimized by maintaining:
-       - a deque of candidate “good” starts where `rightIndex[startOutpost] >= leftIndex[endOutpost]` (added cost is always 1),
-       - a running minimum for “bad” starts where `rightIndex[startOutpost] < leftIndex[endOutpost]` (added cost depends on the gap).
-  3. Returns true if the minimum total effort to cover all outposts is `<= maxEffort`.
+The program is organized into three functions: `main`, `computeCoverageIntervals`, and `isFeasibleRadius`.
+
+`main` begins by reading the four parameters ($n$, $m$, $k$, $t$) followed by the two coordinate arrays. It then runs a binary search over the radius. The search starts with `lowRadius = -1` (a value that is always infeasible since radii must be non-negative) and `highRadius = 2000000000` (always feasible since it exceeds the maximum possible distance between any outpost and any lantern). In each iteration, the midpoint is tested via `isFeasibleRadius`. If the midpoint is feasible, the upper bound moves down; otherwise, the lower bound moves up. When the search converges, `highRadius` holds the smallest feasible radius, which is printed.
+
+`computeCoverageIntervals` takes a candidate radius and builds two arrays, `leftIndex` and `rightIndex`, both using 1-based outpost indexing. For each outpost, it determines the contiguous range of lantern indices that fall within distance $s$ of that outpost. It does this by maintaining two pointers that advance through the sorted lantern array: `leftLanternPointer` finds the first lantern at or to the right of $a - s$, and `rightLanternPointer` finds the first lantern strictly beyond $a + s$. The result for outpost $i$ is stored as `leftIndex[i]` (the 1-based index of the first usable lantern) and `rightIndex[i]` (the 1-based index of the last usable lantern). If any outpost ends up with `leftIndex[i] > rightIndex[i]`, the function returns false immediately — that outpost simply cannot be reached by any lantern at this radius.
+
+`isFeasibleRadius` is the core of the solution. After calling `computeCoverageIntervals`, it initializes a DP array `bestEffortAtMostBursts` where entry $i$ holds the minimum total effort needed to illuminate the first $i$ outposts using any number of bursts seen so far. Initially, only position 0 (no outposts to cover) has effort 0; everything else is infinity.
+
+The function then iterates through burst layers from 1 to `maxBurstCount`. In each layer, it computes a new array `bestEffortWithExactlyThisBurstCount` representing the best effort achievable when this layer's burst is the most recently added one. For each ending outpost `endOutpost`, the code considers all possible starting positions for the new burst. A burst covering outposts $p$ through $i$ requires activating a lantern index range wide enough to reach every outpost in that group. The minimum length of such a range depends on whether the starting outpost's rightmost usable lantern ($R_p$) already reaches the ending outpost's leftmost usable lantern ($L_i$).
+
+The optimization works by classifying each candidate start as "good" or "bad". A start $p$ is good if $R_p \ge L_i$, meaning the lantern ranges overlap and the burst costs just 1 unit. A start is bad if $R_p < L_i$, meaning the burst must span a gap and costs $L_i - R_p + 1$. A `boundaryPointer` tracks the dividing line, which only advances as `endOutpost` increases. For good starts, a monotone deque maintains the index with the smallest previous-layer effort, so the best good option is retrieved in constant time. For bad starts, a running minimum of `previousBestEffort[p-1] - rightIndex[p]` is kept in `bestBadValue`, and the total cost for a bad start is `bestBadValue + leftIndex[endOutpost] + 1`. The final answer for each `endOutpost` is the smaller of the best good and best bad options.
+
+After completing each burst layer, the code merges the new results into `bestEffortAtMostBursts` by taking element-wise minimums, ensuring that using fewer bursts remains an option. After all layers are processed, the function checks whether `bestEffortAtMostBursts[outpostCount]` is within the effort budget $k$.
+
+**Sample Walkthrough (Sample 2)**
+
+Input:
+```
+4 3 2 2
+-3 -1 1 3
+-2 0 2
+```
+Here $n=4$, $m=3$, $k=2$, $t=2$. Outposts are at $[-3, -1, 1, 3]$, lanterns at $[-2, 0, 2]$.
+
+The binary search tests candidate radii. Eventually it tests $s = 1$:
+
+*Stage 1 — coverage intervals:* For each outpost, we find which lanterns lie within distance 1.
+- Outpost 1 ($a = -3$): range $[-4, -2]$. Lantern 1 ($b = -2$) qualifies. So $L_1 = 1$, $R_1 = 1$.
+- Outpost 2 ($a = -1$): range $[-2, 0]$. Lanterns 1 ($b = -2$) and 2 ($b = 0$) qualify. So $L_2 = 1$, $R_2 = 2$.
+- Outpost 3 ($a = 1$): range $[0, 2]$. Lanterns 2 ($b = 0$) and 3 ($b = 2$) qualify. So $L_3 = 2$, $R_3 = 3$.
+- Outpost 4 ($a = 3$): range $[2, 4]$. Lantern 3 ($b = 2$) qualifies. So $L_4 = 3$, $R_4 = 3$.
+
+All intervals are non-empty, so $s = 1$ is not immediately rejected.
+
+*Stage 2 — DP with up to 2 bursts:*
+
+Layer 1 (one burst available):
+- `endOutpost = 1`: The burst must cover outpost 1 alone. Start $p = 1$: cost = $\max(1, L_1 - R_1 + 1) = \max(1, 1) = 1$. Previous effort for covering 0 outposts = 0. Total = $0 + 1 = 1$.
+- `endOutpost = 2`: Best single burst covering outposts 1–2: cost = $\max(1, L_2 - R_1 + 1) = \max(1, 1 - 1 + 1) = 1$. Total = $0 + 1 = 1$.
+- `endOutpost = 3`: Best single burst covering outposts 1–3: cost = $\max(1, L_3 - R_1 + 1) = \max(1, 2 - 1 + 1) = 2$. Total = $0 + 2 = 2$.
+- `endOutpost = 4`: Best single burst covering outposts 1–4: cost = $\max(1, L_4 - R_1 + 1) = \max(1, 3 - 1 + 1) = 3$. Total = $0 + 3 = 3$.
+
+After layer 1: `bestEffortAtMostBursts = [0, 1, 1, 2, 3]`.
+
+Layer 2 (second burst available):
+- `endOutpost = 3`: We can split: cover outposts 1–2 with one burst (effort 1 from layer 1), then cover outpost 3 with a second burst. Start $p = 3$: cost = $\max(1, L_3 - R_3 + 1) = 1$. Total = $1 + 1 = 2$. This matches layer 1's value of 2, no improvement.
+- `endOutpost = 4`: We can split: cover outposts 1–2 with one burst (effort 1), then cover outposts 3–4 with a second burst. Start $p = 3$: cost = $\max(1, L_4 - R_3 + 1) = \max(1, 3 - 3 + 1) = 1$. Total = $1 + 1 = 2$. This improves over layer 1's value of 3.
+
+After layer 2: `bestEffortAtMostBursts[4] = 2`.
+
+The minimum effort to cover all 4 outposts is 2, which equals $k = 2$, so $s = 1$ is feasible.
+
+The binary search also tests $s = 0$. At $s = 0$, the coverage range for each outpost is just the outpost's own coordinate. Since no lantern sits exactly at $-3$, $-1$, $1$, or $3$, every outpost's interval is empty and `computeCoverageIntervals` returns false immediately. So $s = 0$ is infeasible.
+
+The binary search converges to $s = 1$, which is the output.
 
 ---
 
