@@ -1,4 +1,4 @@
-Time Limit: **4 seconds**
+Time Limit: **8 seconds**
 
 Memory Limit: **32 MB**
 
