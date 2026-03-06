@@ -11,7 +11,7 @@ Lanterns can only be turned on in bursts:
 
 - You may perform at most $t$ bursts.
 - You may perform fewer than $t$ bursts (possibly $0$), but the goal is still to illuminate every outpost.
-- In one burst, you choose a contiguous block of lantern indices $[l..r]$ (1-based) and turn on all lanterns $b_l, b_{l+1}, \dots, b_r$.
+- In one burst, you choose a contiguous block of lantern indices $[l..r]$ ($1$-based) and turn on all lanterns $b_l, b_{l+1}, \dots, b_r$.
 - The activation effort of a burst equals its length $r-l+1$.
 - The total activation effort is the sum of burst lengths over all bursts, and it must be at most $k$.
   (Bursts may overlap; overlapping indices still contribute again to the effort.)
