@@ -69,7 +69,7 @@ which is infeasible for the given constraints. Memory usage is not the main issu
 ---
 
 **[section_04]**
-Exploring binary search on the radius to reduce the search space
+Exploring binary search on the radius to attempt to reduce the search space
 **[atomic_04_01]**
 A clear improvement over scanning all radii is to binary search the minimum feasible $s$. This relies on a monotonicity property: if a radius $s$ is feasible, then any larger radius $s' > s$ is also feasible because each activated lantern illuminates a superset of outposts.
 **[atomic_04_02]**
